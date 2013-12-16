@@ -35,7 +35,7 @@ function initialize() {
 		title: bus[x][y]["route"]+" to "+bus[x][y]["destination"]+" ("+bus[x][y]["id"]+")"
 	    });
 	    google.maps.event.addListener(marker,"click",function(){
-		showOneRoute(this.busStuff.index)
+		showOneRoute(this.busStuff);//.index)
 	    });
 	    google.maps.event.addListener(marker,"mouseover",function(){
 		drawRoute(this.busStuff.index,true)
@@ -57,13 +57,18 @@ function displayMarkers(n,t){
     }
 }
 
-function showOneRoute(n){
+function showOneRoute(b){
+
+    console.log(b);
+    showInfo(b);
+
+    n = b.index;
     selectedRoute = true;
     clearPolylines();
     for(x in markers){
 	if(x != n) displayMarkers(x,false);
     }
-    drawRoute(n)
+    drawRoute(n);
 }
 
 function showAllRoutes(){
@@ -118,6 +123,14 @@ function drawRoute(n){
 	p.setMap(map);
 	polylines.push(p);
     }
+}
+
+
+
+function showInfo(b){
+    
+    html = "<div style='font-size:25px;'>"+b.route+" ("+b.id+")</div><em>"+b.destination+"</em><br /><strong>Total "+b.route+" buses</strong>: "+bus[b.index].length+"</div>"
+    document.getElementById("curRouteInfo").innerHTML = html;
 }
 
 

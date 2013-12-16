@@ -46,6 +46,12 @@ div.route {
 div.route_active { background:#A9F5A9; border-color:green; }
 div.route_inactive { background:#F5A9A9; border-color:red; }
 div.route_disabled { background:#A4A4A4; border-color:black; }
+
+#curRouteInfo {
+  border:2px solid black;
+  background:lightblue;
+  padding:3px;
+}
     </style>
     <script type="text/javascript" src="static/all_shapes.js"></script>
     <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
@@ -105,12 +111,16 @@ bus = {"""
     <script type="text/javascript" src="static/maps.js"></script>
   </head>
   <body>
-    <div id="map-canvas" style="margin-left:350px;"></div>
-    <div id="left" style="overflow:auto;width:350px;position:fixed;height:100%;border-right:5px solid black;top:0;"><div id="leftBox" style="padding:5px;">
+    <div id="map-canvas" style="margin-left:250px;"></div>
+    <div id="left" style="overflow:auto;width:250px;position:fixed;height:100%;border-right:5px solid black;top:0;"><div id="leftBox" style="padding:5px;">
+
+<div style="text-align:center;padding:10px;"><a href="javascript:void(0)" onclick="showAllRoutes()">[Show All Buses]</a></div>
+
+<div id="curRouteInfo">Click on a route number or bus marker to load information</div>
 
 <strong>Current Number of Buses</strong>: """+str(total_buses)+"""
-<br /><br />
-<div style="font-weight:bold;">Routes: <small><a href="javascript:void(0)" onclick="showAllRoutes()">[Show All Buses]</a></small></div>
+<br />
+<div style="font-weight:bold;">Routes:</div>
 """
 
     for x in routes_good:
