@@ -3,6 +3,7 @@
 import urllib2
 import json
 from operator import itemgetter
+from pymongo import MongoClient
 
 def get_bus_locations(n):
     if "+" in n:
@@ -34,6 +35,14 @@ def get_bus_locations(n):
         bus.append(temp)
 
     return bus
+
+
+def get_bus_shape(n):
+    c = MongoClient()
+    db = c.bus_polylines.Collections
+
+    a = db.find_one({"route":n})
+    return a["data"]
 
 
 def bus_routes():
@@ -69,6 +78,7 @@ def test_routes():
 
 
 if __name__ == "__main__":
+    print(str(get_bus_shape("M31")))
 #    print(str(get_bus_locations("M31")))
 #    print(json.dumps(bus_routes()))
-    print(json.dumps(test_routes()))
+#    print(json.dumps(test_routes()))

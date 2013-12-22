@@ -1,6 +1,6 @@
 
 
-from flask import Flask, request
+from flask import Flask, request, render_template
 from operator import itemgetter
 import json
 
@@ -19,123 +19,10 @@ def index():
 @app.route("/")#map")
 def map():
 
-    routes = json.loads(open("routes_json.txt").read())
+#    routes = json.loads(open("routes_json.txt").read())
 
+    return render_template("index.html")
 
-    r = """
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
-    <meta charset="utf-8">
-    <title>MTA Bus Locations</title>
-    <style>
-      html, body, #map-canvas {
-        height: 100%;
-        margin: 0px;
-        padding: 0px
-      }
-
-body { font-family:Arial,Verdana; }
-
-div.route { 
-  border:1px solid black;
-  padding:2px;
-  padding-left:50px;
-}
-div.route_active { background:#A9F5A9; border-color:green; }
-div.route_inactive { background:#F5A9A9; border-color:red; }
-div.route_disabled { background:#A4A4A4; border-color:black; }
-
-#curRouteInfo {
-  border:2px solid black;
-  background:lightblue;
-  padding:3px;
-}
-    </style>
-    <script type="text/javascript" src="static/all_shapes.js"></script>
-    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
-    <script>
-
-bus = {"""
-
-    total_buses = 0
-    pins = []
-    routes_good = []
-    route_count = {}
-#    for zz in range(0,10):
-#        z = routes[zz]
-
-    roots = {}
-
-    for z in routes:
-        a = utils.get_bus_locations(z)
-
-        if a != -1:
-            if len(a) > 1:
-                ind = a[0]["index"]
-                routes_good.append(ind)
-
-
-                """
-                temp = '"%s":['%a[0]["index"]
-                temp_ar = []
-                for x in a:
-                    temp_ar.append(json.dumps(x))
-                    total_buses += 1
-                temp += ",".join(temp_ar)
-                temp += "]"
-                pins.append(temp)
-                route_count[z] = len(temp_ar)
-"""
-
-
-                if ind not in roots.keys():
-                    roots[ind] = []
-                
-                for x in a:
-                    roots[ind].append(json.dumps(x))
-                    total_buses += 1
-                route_count[ind] = len(roots[ind])
-
-    tmp = []
-    for x in roots.keys():
-        tmp.append('"%s":[%s]'%(x,",".join(roots[x])))
-    r += ",".join(tmp)
-
-#    r += ",".join(pins)
-
-    r += """
-}
-    </script>
-    <script type="text/javascript" src="static/maps.js"></script>
-  </head>
-  <body>
-    <div id="map-canvas" style="margin-left:250px;"></div>
-    <div id="left" style="overflow:auto;width:250px;position:fixed;height:100%;border-right:5px solid black;top:0;"><div id="leftBox" style="padding:5px;">
-
-<div style="text-align:center;padding:10px;"><a href="javascript:void(0)" onclick="showAllRoutes()">[Show All Buses]</a></div>
-
-<div id="curRouteInfo">Click on a route number or bus marker to load information</div>
-
-<strong>Current Number of Buses</strong>: """+str(total_buses)+"""
-<br />
-<div style="font-weight:bold;">Routes:</div>
-"""
-
-    for x in routes_good:
-        if route_count[x] == 0:
-            cn = "disabled"
-        else:
-            cn = "active"
-        r += '<div id="route_%s" class="route route_%s">%s <em>(%d buses)</em></div>'%(x,cn,x,route_count[x])
-
-    r += """</div>
-  </body>
-</html>
-"""
-
-    return r
 
 
 
@@ -167,6 +54,16 @@ def route():
         r += '</table>'
 
     return r
+
+
+@app.route("/js")
+def js():
+    a = int(request.args.get("type"))
+    
+    # get shape
+    if a == 1:
+        return utils.get_bus_shape(request.args.get("route"))
+
 
 
 if __name__ == "__main__":

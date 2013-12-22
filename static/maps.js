@@ -1,3 +1,7 @@
+bus = {}
+var numRoutes = 0;
+var curNumRoutes = 0;
+var routes = []
 markers = {}
 polylines = []
 selectedRoute = false;
@@ -7,7 +11,7 @@ var map;
 var EXPRESS = ["X","BxM"]//,"QM","BM"]
 
 
-
+/*
 function initialize() {
     var myLatlng = new google.maps.LatLng(40.761951,-73.979214);
     var mapOptions = {
@@ -49,6 +53,70 @@ function initialize() {
 	markers[x] = temp;
     }
 }
+*/
+
+
+
+function initialize() {
+    var myLatlng = new google.maps.LatLng(40.761951,-73.979214);
+    var mapOptions = {
+	zoom: 14,
+	center: myLatlng
+    }
+    map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
+
+    $.getJSON("/static/routes_json.txt",function(d){
+	numRoutes = d.length;
+	for(var x=0;x<d.length;x++){
+	    markers[d[x]] = [];
+	    routes.push(d[x])
+	    getBusRoute(d[x])
+	}
+
+    });
+
+
+    setTimeout(updateMarkers,10000);
+}
+
+
+
+function showRoute(x){
+    temp = [];
+    for(y=0;y<bus[x].length;y++){
+	col = "00FF00"   
+	if(bus[x][y]["route_prefix"].match("SBS")) col = "1969bc"
+	else if(bus[x][y]["destination"].match(/^LTD/i)) col = "97168f"
+	else col = "ed1c24"
+	for(z=0;z<EXPRESS.length;z++){
+	    if(bus[x][y]["route_prefix"] == EXPRESS[z]) col = "008837";
+	}
+	
+	marker = new google.maps.Marker({
+	    busStuff:bus[x][y],
+	    position: new google.maps.LatLng(bus[x][y]["lat"],bus[x][y]["lng"]),
+	    map: map,
+	    icon:"http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld="+bus[x][y]["route_num"]+"|"+col+"|FFFFFF",
+	    title: bus[x][y]["route"]+" to "+bus[x][y]["destination"]+" ("+bus[x][y]["id"]+")"
+	});
+	google.maps.event.addListener(marker,"click",function(){
+	    showOneRoute(this.busStuff);//.index)
+	});
+	google.maps.event.addListener(marker,"mouseover",function(){
+	    drawRoute(this.busStuff.index,true)
+	});
+	google.maps.event.addListener(marker,"mouseout",function(){
+	    if(!selectedRoute) clearPolylines();
+	});
+
+	temp.push(marker);
+    }
+    markers[x] = temp;
+
+}
+
+
+
 
 
 function displayMarkers(n,t){
@@ -134,9 +202,67 @@ function showInfo(b){
 }
 
 
+function getBusRoute(n){
+    $.ajax({
+	url:"http://bustime.mta.info/api/siri/vehicle-monitoring.json?key=OBANYC&LineRef="+n,
+	jsonp:"callback",
+	dataType:"jsonp",
+	success:function(d){
+
+	    curNumRoutes++;
+	    var r = []
+
+	    var k = d.Siri.ServiceDelivery.VehicleMonitoringDelivery[0].VehicleActivity;
+	    for(var x=0;x<k.length;x++){
+		var a = k[x].MonitoredVehicleJourney;
+		var temp = {
+		    id:parseInt(a.VehicleRef.replace(/\D+/g,"")),
+		    route:a.PublishedLineName,
+		    route_num:parseInt(a.PublishedLineName.replace(/\D+/g,"")),
+		    route_prefix:a.PublishedLineName.replace(/\d+/g,""),
+		    lat:a.VehicleLocation.Latitude,
+		    lng:a.VehicleLocation.Longitude,
+		    destination:a.DestinationName,
+		    index:a.PublishedLineName.split("-")[0].toUpperCase()
+		}
+		r.push(temp);
+	    }
+
+	    if(!$.isEmptyObject(markers)){
+		for(var x=0;x<markers[n].length;x++){
+		    markers[n][x].setMap(null);
+		}
+	    }
+	    
+	    bus[n] = r;
+	    showRoute(n);
+
+
+	    if(curNumRoutes == numRoutes){
+		$("#loading").slideUp("slow");
+	    }
+	}
+    });
+}
+
+
+
+function updateMarkers(){
+    curNumRoutes = 0;
+
+    $("#loading").text("Refreshing...").slideDown("slow");
+
+    for(var x=0;x<routes.length;x++){
+	getBusRoute(routes[x]);
+    }
+
+    setTimeout(updateMarkers,10000)
+}
+
 
 
 google.maps.event.addDomListener(window, 'load', initialize);
+
 
 
 
