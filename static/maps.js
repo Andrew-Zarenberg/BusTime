@@ -1,7 +1,9 @@
 bus = {}
+var polyRoute = {};
 var numRoutes = 0;
 var curNumRoutes = 0;
 var routes = []
+var curRouteHover = 0;
 markers = {}
 polylines = []
 selectedRoute = false;
@@ -9,51 +11,6 @@ selectedRoute = false;
 var map;
 
 var EXPRESS = ["X","BxM"]//,"QM","BM"]
-
-
-/*
-function initialize() {
-    var myLatlng = new google.maps.LatLng(40.761951,-73.979214);
-    var mapOptions = {
-	zoom: 14,
-	center: myLatlng
-    }
-    map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
-
-    for(x in bus){
-	temp = [];
-	for(y=0;y<bus[x].length;y++){
-	    col = "00FF00"   
-	    if(bus[x][y]["route_prefix"].match("SBS")) col = "1969bc"
-	    else if(bus[x][y]["destination"].match(/^LTD/i)) col = "97168f"
-	    else col = "ed1c24"
-	    for(z=0;z<EXPRESS.length;z++){
-		if(bus[x][y]["route_prefix"] == EXPRESS[z]) col = "008837";
-	    }
-	    
-	    marker = new google.maps.Marker({
-		busStuff:bus[x][y],
-		position: new google.maps.LatLng(bus[x][y]["lat"],bus[x][y]["lng"]),
-		map: map,
-		icon:"http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld="+bus[x][y]["route_num"]+"|"+col+"|FFFFFF",
-		title: bus[x][y]["route"]+" to "+bus[x][y]["destination"]+" ("+bus[x][y]["id"]+")"
-	    });
-	    google.maps.event.addListener(marker,"click",function(){
-		showOneRoute(this.busStuff);//.index)
-	    });
-	    google.maps.event.addListener(marker,"mouseover",function(){
-		drawRoute(this.busStuff.index,true)
-	    });
-	    google.maps.event.addListener(marker,"mouseout",function(){
-		if(!selectedRoute) clearPolylines();
-	    });
-
-	    temp.push(marker);
-	}
-	markers[x] = temp;
-    }
-}
-*/
 
 
 
@@ -68,20 +25,22 @@ function initialize() {
     $.getJSON("/static/routes_json.txt",function(d){
 	numRoutes = d.length;
 	for(var x=0;x<d.length;x++){
-	    markers[d[x]] = [];
-	    routes.push(d[x])
-	    getBusRoute(d[x])
+	    a = d[x].replace("+","SBS");
+	    markers[a] = [];
+	    routes.push(a)
+	    getBusRoute(a)
 	}
 
     });
 
+    if(!location.href.match("reload=false")) setTimeout(updateMarkers,10000)
 
-    setTimeout(updateMarkers,10000);
 }
 
 
 
 function showRoute(x){
+
     temp = [];
     for(y=0;y<bus[x].length;y++){
 	col = "00FF00"   
@@ -103,9 +62,11 @@ function showRoute(x){
 	    showOneRoute(this.busStuff);//.index)
 	});
 	google.maps.event.addListener(marker,"mouseover",function(){
+	    curRouteHover = this.busStuff.index;
 	    drawRoute(this.busStuff.index,true)
 	});
 	google.maps.event.addListener(marker,"mouseout",function(){
+	    curRouteHover = 0;
 	    if(!selectedRoute) clearPolylines();
 	});
 
@@ -131,7 +92,7 @@ function showOneRoute(b){
     showInfo(b);
 
     n = b.index;
-    selectedRoute = true;
+    selectedRoute = b.index;
     clearPolylines();
     for(x in markers){
 	if(x != n) displayMarkers(x,false);
@@ -163,6 +124,16 @@ function clearPolylines(){
  * DRAW BUS ROUTE
  */
 function drawRoute(n){
+
+    if(!(n in polyRoute)){
+	if($("#loading:hidden").length) $("#loading").text("Loading Route: "+n).slideDown("slow");
+	$.getJSON("js?type=1&route="+n.replace("SBS",""),function(d){
+	    polyRoute[n] = d;
+	    if($("#loading").text() == "Loading Route: "+n) $("#loading").slideUp("slow");
+	    if(curRouteHover == n) drawRoute(n);
+	    return;
+	});
+    }
 
     var poly = polyRoute[n];//.points;
     var polyPoints = []
@@ -203,8 +174,12 @@ function showInfo(b){
 
 
 function getBusRoute(n){
+
+//    if(n.match(/\+/)) rout = n.replace("+","SBS");
+//    else rout = n;
+
     $.ajax({
-	url:"http://bustime.mta.info/api/siri/vehicle-monitoring.json?key=OBANYC&LineRef="+n,
+	url:"http://bustime.mta.info/api/siri/vehicle-monitoring.json?key=OBANYC&LineRef="+n.replace("SBS","%2B"),
 	jsonp:"callback",
 	dataType:"jsonp",
 	success:function(d){
@@ -219,7 +194,7 @@ function getBusRoute(n){
 		    id:parseInt(a.VehicleRef.replace(/\D+/g,"")),
 		    route:a.PublishedLineName,
 		    route_num:parseInt(a.PublishedLineName.replace(/\D+/g,"")),
-		    route_prefix:a.PublishedLineName.replace(/\d+/g,""),
+		    route_prefix:a.PublishedLineName.replace(/\d+\D+/g,"").replace(/\d+/g,""),
 		    lat:a.VehicleLocation.Latitude,
 		    lng:a.VehicleLocation.Longitude,
 		    destination:a.DestinationName,
@@ -230,15 +205,15 @@ function getBusRoute(n){
 
 	    if(!$.isEmptyObject(markers)){
 		for(var x=0;x<markers[n].length;x++){
-		    markers[n][x].setMap(null);
+		    markers[n.replace("SBS","")][x].setMap(null);
 		}
 	    }
 	    
 	    bus[n] = r;
-	    showRoute(n);
+	    showRoute(n)
 
 
-	    if(curNumRoutes == numRoutes){
+	    if(curNumRoutes == numRoutes || (selectedRoute && curNumRoutes == 1)){
 		$("#loading").slideUp("slow");
 	    }
 	}
@@ -252,8 +227,12 @@ function updateMarkers(){
 
     $("#loading").text("Refreshing...").slideDown("slow");
 
-    for(var x=0;x<routes.length;x++){
-	getBusRoute(routes[x]);
+    if(!selectedRoute){
+	for(var x=0;x<routes.length;x++){
+	    getBusRoute(routes[x]);
+	}
+    } else {
+	getBusRoute(selectedRoute);
     }
 
     setTimeout(updateMarkers,10000)
